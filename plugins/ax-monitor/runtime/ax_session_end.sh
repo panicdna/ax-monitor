@@ -2,8 +2,9 @@
 # ax-monitor — Claude Code SessionEnd/Stop hook.
 #
 # 세션이 끝날 때(SessionEnd) 또는 매 응답 종료마다(Stop) 그 세션의 transcript(JSONL)를
-# 측정 서버(Summarizer)로 한 번 전송한다. 사용자는 평소처럼 claude 만 쓰면 된다 — 전송은
-# 동기지만 서버가 수신 즉시 응답하므로 체감 0이고, 실패/지연해도 세션 종료를 막지 않는다.
+# 측정 서버로 raw 그대로 한 번 전송한다(파싱·LLM 없음 — 업로드만). 사용자는 평소처럼
+# claude 만 쓰면 된다 — 전송은 동기지만 서버가 수신 즉시 응답하므로 체감 0이고,
+# 실패/지연해도 세션 종료를 막지 않는다.
 #
 # 설치: /install-ax-monitor (이 스크립트를 ~/.claude/ax-monitor/ 로 복사하고
 #       ~/.claude/settings.json 에 hook 으로 등록).

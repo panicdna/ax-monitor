@@ -1,21 +1,20 @@
-"""AX Hook Local Verifier — hook 이 보내는 그대로를 받아 보여 주는 로컬 검증 서버.
+"""ax-monitor local verifier — hook 이 보내는 raw 기록을 그대로 받아 저장·확인하는 서버.
 
-ahn-vatar `SessionEnd` hook 의 전송 계약(`POST /v1/sessions`, X-User-Id/X-Session-Id/
-X-Cwd, --data-binary raw JSONL)을 그대로 재현한다. 풀 백엔드(Postgres·시드·아바타 서비스)
-없이 단일 stdlib http.server 로 떠서:
+ax-monitor `SessionEnd`/`Stop` hook 의 전송 계약(`POST /v1/sessions`, X-User-Id/
+X-Session-Id/X-Cwd, --data-binary raw JSONL)을 그대로 재현한다. 측정 서버 없이 단일 stdlib
+http.server 로 떠서:
 
   1) raw body + 헤더를 captures/ 에 그대로 저장 (hook 이 무엇을 보냈나)
-  2) production Summarizer 와 동일한 메타 분해를 리포트로 출력
-  3) (--summarize) OpenAI 호환 요약 경로 시험 (LLM 미설정 시 stub)
-  4) (--forward URL) 동일 POST 를 실제 백엔드로 중계
+  2) 결정적 분해(발화/응답/tool_use/tool_result/skill/agent, tools·turns 등)를 리포트로 출력
+  3) (--forward URL) 동일 raw POST 를 실제 백엔드로 중계
 
-응답은 실제 서버와 동일한 {ok, queued, session_id} → hook 의 curl -fsS 성공 종료.
+LLM/요약은 다루지 않는다 — hook 과 마찬가지로 raw 기록을 그대로 전달·보관만 한다.
+응답은 실제 서버와 동일한 {ok, queued, session_id} → hook 의 curl 성공 종료.
 
 실행:
-  python main.py                          # :14210, 요약 없이 캡처+리포트
-  python main.py --summarize              # 요약 경로까지 (LLM_BASE_URL 있으면 OpenAI)
-  python main.py --forward http://localhost:14200/v1/sessions
-  idp_mock 처럼 Docker 로도 기동 가능 (Dockerfile 참조).
+  python main.py                                       # :14210, 캡처+리포트
+  python main.py --forward http://localhost:14200/v1/sessions   # 실서버로 raw 중계
+  Docker 로도 기동 가능 (Dockerfile 참조).
 """
 
 from __future__ import annotations
@@ -30,13 +29,11 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from summarize import summarize
-from transcript import build_bundle, extract_meta, parse_jsonl, raw_breakdown
+from transcript import extract_meta, parse_jsonl, raw_breakdown
 
 # 모듈 전역 설정 (CLI/env 로 채워짐) — 핸들러가 참조.
 CONFIG: dict = {
     "captures_dir": Path("captures"),
-    "summarize": False,
     "forward_url": "",
     "max_bytes": 64 * 1024 * 1024,  # 수신 페이로드 상한 (OOM 방어). 0 이면 무제한.
 }
@@ -104,8 +101,8 @@ class Handler(BaseHTTPRequestHandler):
             self._json(400, {"ok": False, "error": "empty transcript body"})
             return
 
-        # 실제 서버처럼 즉시 응답(hook 종료 비차단). 분석/저장은 응답 후 동기로 처리해도
-        # 로컬 검증에선 수십 ms — 단순함을 위해 응답 전에 처리하고 리포트를 찍는다.
+        # 실제 서버처럼 즉시 응답(hook 종료 비차단). 저장/리포트는 응답 전에 처리해도
+        # 로컬 검증에선 수십 ms.
         try:
             self._handle(payload, user_id=user_id, session_id=session_id, cwd=cwd)
         except Exception as e:  # noqa: BLE001 — 검증 서버는 절대 hook 을 깨지 않는다
@@ -136,21 +133,11 @@ class Handler(BaseHTTPRequestHandler):
             "raw_breakdown": breakdown,
             "meta": meta,
         }
-
-        summary = None
-        info = None
-        if CONFIG["summarize"]:
-            ctx = build_bundle(transcript, cwd=cwd)
-            summary, info = summarize(ctx)
-            meta_sidecar["context_bundle"] = ctx
-            meta_sidecar["summary"] = summary
-            meta_sidecar["llm"] = info
-
         (captures / f"{stem}.meta.json").write_text(
             json.dumps(meta_sidecar, ensure_ascii=False, indent=2), encoding="utf-8"
         )
 
-        # 3) 실제 백엔드로 중계 (옵션)
+        # 3) 실제 백엔드로 raw 중계 (옵션)
         forward_status = self._forward(
             payload, user_id=user_id, session_id=session_id, cwd=cwd
         )
@@ -163,8 +150,6 @@ class Handler(BaseHTTPRequestHandler):
             n_lines=len(transcript),
             breakdown=breakdown,
             meta=meta,
-            summary=summary,
-            info=info,
             stem=stem,
             forward_status=forward_status,
         )
@@ -200,15 +185,13 @@ def _print_report(
     n_lines,
     breakdown,
     meta,
-    summary,
-    info,
     stem,
     forward_status,
 ) -> None:
     b = breakdown
     lines = [
         "",
-        "┌─ AX hook 수신 검증 ──────────────────────────────────────",
+        "┌─ ax-monitor 수신 검증 ───────────────────────────────────",
         f"│ user={user_id or '(none)'}  session={session_id}",
         f"│ cwd={cwd or '(none)'}",
         f"│ 수신 {n_bytes:,} bytes / {n_lines} lines",
@@ -219,14 +202,6 @@ def _print_report(
         f"│ skills={meta['skills_used']}  sub_agents={meta['sub_agents_used']}",
         f"│ turns={meta['turns']}  tokens={meta['tokens']:,}",
     ]
-    if summary is not None and info is not None:
-        lines.append(
-            f"│ 요약: mode={info['mode']} model={info['model'] or '-'} {info['ms']}ms"
-            + ("" if info["ok"] else f" (error={info['error']})")
-        )
-        lines.append(f"│   intent  : {summary.get('intent', '')}")
-        lines.append(f"│   category: {summary.get('task_category', '')}")
-        lines.append(f"│   activities: {summary.get('activities', [])}")
     if forward_status is not None:
         lines.append(f"│ forward → {forward_status}")
     lines.append(f"│ 저장: captures/{stem}.jsonl + captures/{stem}.meta.json")
@@ -235,7 +210,7 @@ def _print_report(
 
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="AX hook 로컬 검증 서버")
+    p = argparse.ArgumentParser(description="ax-monitor 로컬 검증 서버 (raw 캡처/중계)")
     p.add_argument("--host", default=os.getenv("AX_VERIFY_HOST", "0.0.0.0"))
     p.add_argument("--port", type=int, default=_env_int("AX_VERIFY_PORT", 14210))
     p.add_argument(
@@ -248,15 +223,9 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         help="수신 페이로드 상한 바이트(OOM 방어). 0 이면 무제한",
     )
     p.add_argument(
-        "--summarize",
-        action="store_true",
-        default=os.getenv("AX_VERIFY_SUMMARIZE", "") not in ("", "0", "false", "False"),
-        help="OpenAI 호환 요약 경로까지 시험 (LLM_BASE_URL 미설정 시 stub)",
-    )
-    p.add_argument(
         "--forward",
         default=os.getenv("AX_VERIFY_FORWARD", ""),
-        help="동일 POST 를 실제 백엔드로 중계 (예: http://localhost:14200/v1/sessions)",
+        help="동일 raw POST 를 실제 백엔드로 중계 (예: http://localhost:14200/v1/sessions)",
     )
     return p.parse_args(argv)
 
@@ -264,16 +233,15 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv if argv is not None else sys.argv[1:])
     CONFIG["captures_dir"] = Path(args.captures_dir)
-    CONFIG["summarize"] = bool(args.summarize)
     CONFIG["forward_url"] = args.forward
     CONFIG["max_bytes"] = args.max_bytes
     CONFIG["captures_dir"].mkdir(parents=True, exist_ok=True)
 
     httpd = ThreadingHTTPServer((args.host, args.port), Handler)
     print(
-        f"[verify] AX hook 로컬 검증 서버 → http://{args.host}:{args.port}/v1/sessions\n"
+        f"[verify] ax-monitor 로컬 검증 서버 → http://{args.host}:{args.port}/v1/sessions\n"
         f"[verify]   captures={CONFIG['captures_dir'].resolve()}  "
-        f"summarize={CONFIG['summarize']}  forward={CONFIG['forward_url'] or '-'}\n"
+        f"forward={CONFIG['forward_url'] or '-'}\n"
         f"[verify]   hook 에서: export AX_SUMMARIZER_URL=http://localhost:{args.port}/v1/sessions",
         flush=True,
     )

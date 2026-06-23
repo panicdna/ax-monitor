@@ -102,7 +102,7 @@ if curl -fsS --noproxy '*' -m3 "$BASE/health" >/dev/null 2>&1; then
 else
   echo "⚠ server not reachable at $BASE — hook will still be installed, but"
   echo "  data won't land until the server is up. For the bundled local verifier:"
-  echo "    python ~/.claude/ax-monitor/local-verifier/main.py --summarize"
+  echo "    python ~/.claude/ax-monitor/local-verifier/main.py"
 fi
 ```
 
@@ -178,8 +178,8 @@ Tell the user:
 >
 > - Watch invocations: `tail -f ~/.claude/ax-hook.log` (`invoked` / `send` /
 >   `result http=200`).
-> - Local target: `python ~/.claude/ax-monitor/local-verifier/main.py --summarize`
->   (optionally `--forward <deployed-url>` to relay to a real backend).
+> - Local target: `python ~/.claude/ax-monitor/local-verifier/main.py`
+>   (optionally `--forward <deployed-url>` to relay the raw record to a real backend).
 > - Opt out for a shell: `export AX_MEASUREMENT_OFF=1`.
 > - Remove: `/uninstall-ax-monitor`.
 
@@ -195,6 +195,6 @@ Tell the user:
   `AX_PER_TURN=1` the same row updates each turn (one card per session). With
   it, each turn becomes a new `-tNNN` row.
 - The bundled `runtime/local-verifier/` is a single-file stdlib server — no
-  external deps. It captures raw transcript + headers, prints a
-  production-equivalent breakdown, optionally summarizes (OpenAI-compatible,
-  stub fallback), and can `--forward` to a real backend.
+  external deps and no LLM. It captures the raw transcript + headers, prints a
+  deterministic breakdown of what was received, and can `--forward` the raw
+  record to a real backend.
