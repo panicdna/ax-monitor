@@ -1,0 +1,26 @@
+{
+  "name": "ax-monitor",
+  "version": "1.0.0",
+  "description": "AX usage measurement hook for Claude Code. On SessionEnd (or Stop, per turn) it POSTs the session transcript to a measurement server which extracts deterministic meta and an OpenAI-compatible summary. Ships a bundled stdlib local verifier and bundles the 'install-ax-monitor' and 'uninstall-ax-monitor' skills.",
+  "author": {
+    "name": "panicdna"
+  },
+  "maintainer": {
+    "name": "panicdna",
+    "url": "https://github.com/panicdna"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/panicdna/ax-monitor",
+  "repository": "https://github.com/panicdna/ax-monitor.git",
+  "keywords": [
+    "hooks",
+    "claude-code",
+    "telemetry",
+    "measurement",
+    "ax",
+    "sessionend",
+    "stop",
+    "summarizer"
+  ],
+  "category": "developer-tools"
+}

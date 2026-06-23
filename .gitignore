@@ -1,0 +1,13 @@
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+node_modules/
+__pycache__/
+.env
+.env.local
+
+# local-verifier 수신 캡처(세션 원문)
+captures/
+*.out

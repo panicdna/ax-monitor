@@ -1,0 +1,15 @@
+{
+  "name": "panicdna-ax-monitor",
+  "owner": {
+    "name": "panicdna",
+    "url": "https://github.com/panicdna"
+  },
+  "description": "AX usage measurement for Claude Code. A SessionEnd/Stop hook ships each session transcript to a measurement server (Summarizer → OpenAI-compatible summary) with zero workflow change, and a bundled stdlib local verifier lets you test the flow without a full backend. Bundles its own install/uninstall skills.",
+  "plugins": [
+    {
+      "name": "ax-monitor",
+      "source": "./plugins/ax-monitor",
+      "description": "Claude Code SessionEnd/Stop hook that POSTs the session transcript to an AX measurement server. Optional per-turn rows, call logging, and a bundled local verifier. Bundles the 'install-ax-monitor' and 'uninstall-ax-monitor' skills."
+    }
+  ]
+}
