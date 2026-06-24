@@ -1,0 +1,26 @@
+{
+  "name": "ax-monitor-server",
+  "version": "1.0.0",
+  "description": "AX measurement retail server for Claude Code. Receives the raw session transcript POSTed by the ax-monitor hook (POST /v1/sessions), captures it, prints a deterministic breakdown, optionally summarizes (OpenAI-compatible) and forwards upstream, and serves a read-only dashboard. Single-file stdlib http.server (zero pip deps). Bundles the 'install-ax-server' and 'uninstall-ax-server' skills which install it as a nohup-managed daemon with a configurable bind IP and port (default 14200).",
+  "author": {
+    "name": "panicdna"
+  },
+  "maintainer": {
+    "name": "panicdna",
+    "url": "https://github.com/panicdna"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/panicdna/ax-monitor",
+  "repository": "https://github.com/panicdna/ax-monitor.git",
+  "keywords": [
+    "claude-code",
+    "telemetry",
+    "measurement",
+    "ax",
+    "server",
+    "retail-server",
+    "dashboard",
+    "raw-transcript"
+  ],
+  "category": "developer-tools"
+}
