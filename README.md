@@ -15,6 +15,26 @@
 
 ---
 
+## 가장 쉬운 길 — 통합 진입점 `/setup-ax`
+
+어느 쪽(client/server)을 깔아야 할지 헷갈리면 `ax-setup` 플러그인 하나만 깔고 `/setup-ax` 를
+실행하세요. 이 PC 가 **client(보내는 쪽)·server(받는 쪽)·둘 다(로컬 테스트)** 중 무엇인지 한
+번 묻고, 필요한 플러그인 설치를 안내한 뒤 각 설치 스킬을 올바른 순서로(서버 먼저, 그다음 그
+서버를 가리키는 client) 실행해 줍니다. 자체 런타임은 없고 기존 설치 스킬에 위임하는 **얇은
+오케스트레이터**입니다.
+
+```
+/plugin marketplace add panicdna/ax-monitor   # 한 번만
+/plugin install ax-setup
+/setup-ax
+```
+
+> `/setup-ax` 는 `/plugin install`(내장 명령)을 대신 실행하진 못합니다 — 역할에 필요한
+> 플러그인이 없으면 정확한 설치 명령을 알려준 뒤 이어서 진행합니다. 무엇을 깔지 이미 안다면
+> 아래처럼 직접 설치해도 됩니다.
+
+---
+
 ## 설치는 어떻게 동작하나
 
 설치는 **두 개의 층**입니다.
@@ -42,6 +62,7 @@
 
 | 플러그인 | 플러그인 층 | 설치 스킬 | 제거 스킬 |
 |---|---|---|---|
+| `ax-setup` (통합 진입점) | `/plugin install ax-setup` / `/plugin uninstall ax-setup` | `/setup-ax` | — |
 | `ax-monitor` (클라이언트 hook) | `/plugin install ax-monitor` / `/plugin uninstall ax-monitor` | `/install-ax-monitor` | `/uninstall-ax-monitor` |
 | `ax-monitor-server` (수신 서버) | `/plugin install ax-monitor-server` / `/plugin uninstall ax-monitor-server` | `/install-ax-server` | `/uninstall-ax-server` |
 
@@ -187,15 +208,19 @@ ax-monitor/
 │   │   └── skills/
 │   │       ├── install-ax-monitor/SKILL.md
 │   │       └── uninstall-ax-monitor/SKILL.md
-│   └── ax-monitor-server/                   # 수신 서버 플러그인
+│   ├── ax-monitor-server/                   # 수신 서버 플러그인
+│   │   ├── .claude-plugin/plugin.json
+│   │   ├── runtime/                         # 설치 시 ~/.claude/ax-monitor-server/ 로 복사됨
+│   │   │   ├── ax-server.sh                 # nohup 데몬 런처 (start/stop/restart/status)
+│   │   │   ├── main.py · transcript.py · summarize.py · dashboard.py
+│   │   │   ├── requirements.txt · README.md
+│   │   └── skills/
+│   │       ├── install-ax-server/SKILL.md
+│   │       └── uninstall-ax-server/SKILL.md
+│   └── ax-setup/                            # 통합 진입점 (런타임 없음 — 오케스트레이터)
 │       ├── .claude-plugin/plugin.json
-│       ├── runtime/                         # 설치 시 ~/.claude/ax-monitor-server/ 로 복사됨
-│       │   ├── ax-server.sh                 # nohup 데몬 런처 (start/stop/restart/status)
-│       │   ├── main.py · transcript.py · summarize.py · dashboard.py
-│       │   ├── requirements.txt · README.md
 │       └── skills/
-│           ├── install-ax-server/SKILL.md
-│           └── uninstall-ax-server/SKILL.md
+│           └── setup-ax/SKILL.md
 ├── README.md
 └── LICENSE
 ```

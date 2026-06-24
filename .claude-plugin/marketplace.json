@@ -15,6 +15,11 @@
       "name": "ax-monitor-server",
       "source": "./plugins/ax-monitor-server",
       "description": "The receiving end: a single-file stdlib retail server that captures the raw transcript the ax-monitor hook sends, prints a deterministic breakdown, optionally summarizes and forwards, and serves a read-only dashboard. Bundles 'install-ax-server' / 'uninstall-ax-server' to install it as a nohup-managed daemon with a configurable bind IP and port (default 14200)."
+    },
+    {
+      "name": "ax-setup",
+      "source": "./plugins/ax-setup",
+      "description": "Unified entry point. The 'setup-ax' skill asks whether this PC is a client, the server, or both, then guides installing the right plugin(s) and runs their installers in order (server first, then client). A thin orchestrator — bundles no runtime, delegates to install-ax-monitor / install-ax-server."
     }
   ]
 }
