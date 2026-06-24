@@ -1,0 +1,25 @@
+{
+  "name": "ax-setup",
+  "version": "1.0.0",
+  "description": "Unified entry point for AX measurement on Claude Code. The 'setup-ax' skill asks one question — is this PC a client (sends transcripts), the server (receives them), or both (local testing) — then guides installing the right plugin(s) and runs their install skills in the correct order (server first, then client pointed at it). A thin orchestrator: it bundles no runtime and duplicates no logic — it delegates to install-ax-monitor / install-ax-server.",
+  "author": {
+    "name": "panicdna"
+  },
+  "maintainer": {
+    "name": "panicdna",
+    "url": "https://github.com/panicdna"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/panicdna/ax-monitor",
+  "repository": "https://github.com/panicdna/ax-monitor.git",
+  "keywords": [
+    "claude-code",
+    "telemetry",
+    "measurement",
+    "ax",
+    "setup",
+    "orchestrator",
+    "entry-point"
+  ],
+  "category": "developer-tools"
+}
